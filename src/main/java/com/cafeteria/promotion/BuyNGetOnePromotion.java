@@ -7,6 +7,13 @@ import com.cafeteria.util.Money;
 
 import java.math.BigDecimal;
 
+/**
+ * Promoción «lleva N+1 y paga N» sobre las líneas de una categoría (por ejemplo, 3x2 en bebidas).
+ * Las unidades gratis se calculan por línea del pedido.
+ *
+ * <p><b>Patrón Strategy (rol ConcreteStrategy):</b> encapsula en una clase independiente el algoritmo
+ * de cálculo de un tipo de descuento; se puede añadir otra promoción sin modificar las existentes.</p>
+ */
 public final class BuyNGetOnePromotion implements Promotion {
 
     private final String code;
@@ -14,6 +21,13 @@ public final class BuyNGetOnePromotion implements Promotion {
     private final ProductCategory category;
     private final int buy;
 
+    /**
+     * @param code        código que digita el usuario
+     * @param description texto comercial
+     * @param category    categoría de productos a los que aplica
+     * @param buy         unidades que se pagan por cada unidad gratis (mínimo 1)
+     * @throws IllegalArgumentException si {@code buy} es menor que 1
+     */
     public BuyNGetOnePromotion(String code, String description, ProductCategory category, int buy) {
         if (buy < 1) {
             throw new IllegalArgumentException("Debe comprarse al menos 1 unidad");

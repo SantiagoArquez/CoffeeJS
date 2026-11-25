@@ -1,13 +1,50 @@
 package com.cafeteria.catalog;
 
 import com.cafeteria.model.Product;
+import com.cafeteria.util.DataDirectory;
 
+import java.nio.file.Path;
+
+/**
+ * Menú inicial de la cafetería.
+ *
+ * <p>{@link #load()} es el punto de entrada que usa la aplicación: abre el menú guardado
+ * en disco (carpeta de {@link DataDirectory}) o, si es la primera ejecución, lo crea con
+ * los productos por defecto. {@link #loadDefaults()} devuelve el mismo menú pero solo en
+ * memoria, útil para pruebas y demostraciones.</p>
+ */
 public final class DefaultMenu {
+
+    /** Nombre del archivo donde se guarda el menú. */
+    public static final String MENU_FILE = "menu.dat";
 
     private DefaultMenu() {
     }
 
+    /**
+     * Carga el menú persistente. Si no se puede acceder al disco, avisa por la salida de
+     * error y continúa con un menú solo en memoria para no impedir el uso del sistema.
+     *
+     * @return el catálogo de productos a usar por la aplicación
+     */
     public static ProductCatalog load() {
+        ProductCatalog defaults = loadDefaults();
+        try {
+            Path file = DataDirectory.resolve().resolve(MENU_FILE);
+            return new FileProductCatalog(file, defaults);
+        } catch (RuntimeException e) {
+            System.err.println("Aviso: no se pudo usar el menú guardado (" + e.getMessage()
+                    + "). Se trabaja solo en memoria.");
+            return defaults;
+        }
+    }
+
+    /**
+     * Construye el menú por defecto sin tocar el disco.
+     *
+     * @return un catálogo en memoria con bebidas, alimentos y combos de ejemplo
+     */
+    public static ProductCatalog loadDefaults() {
         ProductCatalog catalog = new InMemoryProductCatalog();
 
         Product espresso = ProductFactory.beverage("Espresso", "Café concentrado", 4500);
