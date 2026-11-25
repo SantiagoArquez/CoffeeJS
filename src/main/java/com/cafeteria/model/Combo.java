@@ -28,6 +28,10 @@ public final class Combo implements Product {
         this.discountPercent = discountPercent;
     }
 
+    public String getBaseDescription() {
+        return description;
+    }
+
     public List<Product> getItems() {
         return items;
     }

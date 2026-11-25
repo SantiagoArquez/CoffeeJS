@@ -1,6 +1,8 @@
 package com.cafeteria.ui;
 
 import com.cafeteria.catalog.ProductCatalog;
+import com.cafeteria.catalog.ProductFactory;
+import com.cafeteria.model.Combo;
 import com.cafeteria.decorator.CustomizationCatalog;
 import com.cafeteria.decorator.CustomizationOption;
 import com.cafeteria.model.Product;
@@ -39,6 +41,7 @@ public final class ConsoleApp {
             System.out.println("4. Ver pedidos");
             System.out.println("5. Avanzar estado de un pedido");
             System.out.println("6. Cancelar un pedido");
+            System.out.println("7. Gestionar productos");
             System.out.println("0. Salir");
             String option = prompt("Elige una opción: ");
             if (option == null) {
@@ -52,6 +55,7 @@ public final class ConsoleApp {
                     case "4" -> showOrders();
                     case "5" -> advanceOrder();
                     case "6" -> cancelOrder();
+                    case "7" -> manageProducts();
                     case "0" -> {
                         System.out.println("¡Hasta pronto!");
                         return;
@@ -75,6 +79,65 @@ public final class ConsoleApp {
                 }
             }
         }
+    }
+
+    private void manageProducts() {
+        while (true) {
+            System.out.println("\n--- Gestión de productos ---");
+            System.out.println("1. Ver menú");
+            System.out.println("2. Registrar producto");
+            System.out.println("3. Modificar producto");
+            System.out.println("4. Eliminar producto");
+            System.out.println("0. Volver");
+            String option = prompt("Elige una opción: ");
+            if (option == null || option.equals("0")) return;
+            try {
+                switch (option) {
+                    case "1" -> showMenu();
+                    case "2" -> {
+                        String code = prompt("Código: ");
+                        catalog.register(code, readSimpleProduct());
+                        System.out.println("Producto registrado.");
+                    }
+                    case "3" -> {
+                        String code = prompt("Código del producto: ");
+                        Product current = catalog.findByCode(code).orElseThrow(() -> new IllegalArgumentException("Producto no encontrado"));
+                        Product replacement;
+                        if (current instanceof Combo combo) {
+                            String name = prompt("Nuevo nombre: ");
+                            String description = prompt("Nueva descripción: ");
+                            String discount = prompt("Nuevo descuento (%): ");
+                            replacement = ProductFactory.editCombo(combo, name, description, discount);
+                        } else {
+                            replacement = readSimpleProduct();
+                        }
+                        catalog.update(code, replacement);
+                        System.out.println("Producto modificado.");
+                    }
+                    case "4" -> {
+                        String code = prompt("Código del producto: ");
+                        Product current = catalog.findByCode(code).orElseThrow(() -> new IllegalArgumentException("Producto no encontrado"));
+                        if ("s".equalsIgnoreCase(prompt("¿Eliminar " + current.getName() + "? (s/n): "))) {
+                            catalog.remove(code);
+                            System.out.println("Producto eliminado.");
+                        }
+                    }
+                    default -> System.out.println("Opción no válida.");
+                }
+            } catch (IllegalArgumentException e) {
+                System.out.println(e.getMessage());
+            }
+        }
+    }
+
+    private Product readSimpleProduct() {
+        String name = prompt("Nombre: ");
+        String description = prompt("Descripción: ");
+        String price = prompt("Precio en pesos: ");
+        String category = prompt("Categoría (1. Bebida, 2. Alimento): ");
+        if ("1".equals(category)) return ProductFactory.simple(name, description, price, ProductCategory.BEVERAGE);
+        if ("2".equals(category)) return ProductFactory.simple(name, description, price, ProductCategory.FOOD);
+        throw new IllegalArgumentException("Categoría inválida");
     }
 
     private void showPromotions() {
@@ -101,6 +164,7 @@ public final class ConsoleApp {
             builder.add(product, quantity);
             System.out.printf("Agregado: %dx %s (%s c/u)%n", quantity, product.getName(),
                     Money.format(product.getPrice()));
+            System.out.println("Descripción: " + product.getDescription());
         }
         if (builder.isEmpty()) {
             System.out.println("Pedido vacío, no se creó.");

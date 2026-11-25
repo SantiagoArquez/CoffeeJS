@@ -9,6 +9,10 @@ public interface ProductCatalog {
 
     void register(String code, Product product);
 
+    void update(String code, Product product);
+
+    void remove(String code);
+
     Optional<Product> findByCode(String code);
 
     Collection<Entry> entries();

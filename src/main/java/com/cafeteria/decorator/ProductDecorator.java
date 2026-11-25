@@ -29,7 +29,9 @@ public abstract class ProductDecorator implements Product {
 
     @Override
     public String getDescription() {
-        return wrapped.getDescription();
+        String description = wrapped.getDescription();
+        return description == null || description.isBlank()
+                ? extraLabel : description + " + " + extraLabel;
     }
 
     @Override

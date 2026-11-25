@@ -1,6 +1,9 @@
 package com.cafeteria.ui;
 
 import com.cafeteria.catalog.ProductCatalog;
+import com.cafeteria.catalog.ProductFactory;
+import com.cafeteria.model.Combo;
+import com.cafeteria.model.ProductCategory;
 import com.cafeteria.decorator.CustomizationCatalog;
 import com.cafeteria.decorator.CustomizationOption;
 import com.cafeteria.model.Product;
@@ -19,14 +22,15 @@ public final class SwingApp extends JFrame implements OrderListener {
     private final PromotionEngine promotions;
     private final OrderService orders;
     private final List<OrderLine> cart = new ArrayList<>();
-    private final List<ProductCatalog.Entry> menu;
+    private List<ProductCatalog.Entry> menu = List.of();
     private final List<Promotion> promoList;
     private final JTextField customer = new JTextField(18);
     private final JComboBox<String> promo = new JComboBox<>();
     private final JSpinner quantity = new JSpinner(new SpinnerNumberModel(1, 1, 999, 1));
     private final DefaultTableModel menuModel = model("Código", "Producto", "Categoría", "Precio", "Descripción");
-    private final DefaultTableModel cartModel = model("Producto", "Cantidad", "Total");
+    private final DefaultTableModel cartModel = model("Producto", "Descripción", "Cantidad", "Total");
     private final DefaultTableModel orderModel = model("Pedido", "Cliente", "Estado", "Total");
+    private final JTable adminTable = new JTable(menuModel);
     private final JTable menuTable = new JTable(menuModel);
     private final JTable cartTable = new JTable(cartModel);
     private final JTable orderTable = new JTable(orderModel);
@@ -40,23 +44,19 @@ public final class SwingApp extends JFrame implements OrderListener {
         this.catalog = catalog;
         this.promotions = promotions;
         this.orders = orders;
-        menu = List.copyOf(catalog.entries());
         promoList = List.copyOf(promotions.all());
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setMinimumSize(new Dimension(850, 600));
         setSize(1100, 740);
         setLocationRelativeTo(null);
-        for (JTable table : List.of(menuTable, cartTable, orderTable)) {
+        for (JTable table : List.of(menuTable, adminTable, cartTable, orderTable)) {
             table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
             table.setRowHeight(25);
         }
         receipt.setEditable(false);
         receipt.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 13));
         notifications.setEditable(false);
-        for (var entry : menu) {
-            Product p = entry.product();
-            menuModel.addRow(new Object[]{entry.code(), p.getName(), p.getCategory().getLabel(), Money.format(p.getPrice()), p.getDescription()});
-        }
+        refreshMenu();
         promo.addItem("Sin promoción");
         for (Promotion p : promoList) promo.addItem(p.getCode());
         promo.addActionListener(e -> refreshCart());
@@ -64,6 +64,7 @@ public final class SwingApp extends JFrame implements OrderListener {
         tabs.addTab("Nuevo pedido", newOrderPanel());
         tabs.addTab("Pedidos registrados", ordersPanel());
         tabs.addTab("Promociones", promotionsPanel());
+        tabs.addTab("Gestionar productos", productsPanel());
         JPanel root = new JPanel(new BorderLayout(10, 10));
         root.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
         JLabel title = new JLabel("CoffeeJS | Gestión de cafetería");
@@ -151,6 +152,71 @@ public final class SwingApp extends JFrame implements OrderListener {
         panel.add(buttons, BorderLayout.SOUTH); return panel;
     }
 
+    private JPanel productsPanel() {
+        JPanel panel = new JPanel(new BorderLayout(8, 8));
+        panel.add(new JScrollPane(adminTable), BorderLayout.CENTER);
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        actions.add(button("Registrar", () -> productDialog(null)));
+        actions.add(button("Modificar", () -> productDialog(selectedProduct())));
+        actions.add(button("Eliminar", () -> {
+            ProductCatalog.Entry entry = selectedProduct();
+            if (JOptionPane.showConfirmDialog(this, "¿Eliminar " + entry.product().getName() + "?", "Confirmar", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
+                catalog.remove(entry.code());
+                refreshMenu();
+            }
+        }));
+        panel.add(actions, BorderLayout.SOUTH);
+        return panel;
+    }
+
+    private ProductCatalog.Entry selectedProduct() {
+        int row = adminTable.getSelectedRow();
+        if (row < 0) throw new IllegalArgumentException("Selecciona un producto");
+        return menu.get(adminTable.convertRowIndexToModel(row));
+    }
+
+    private void productDialog(ProductCatalog.Entry entry) {
+        Product current = entry == null ? null : entry.product();
+        Combo combo = current instanceof Combo c ? c : null;
+        JTextField code = new JTextField(entry == null ? "" : entry.code(), 18);
+        code.setEditable(entry == null);
+        JTextField name = new JTextField(current == null ? "" : current.getName(), 18);
+        JTextField description = new JTextField(current == null ? "" : combo == null ? current.getDescription() : combo.getBaseDescription(), 18);
+        JTextField price = new JTextField(current == null ? "" : combo == null ? current.getPrice().toPlainString() : String.valueOf(combo.getDiscountPercent()), 18);
+        JComboBox<String> category = new JComboBox<>(new String[]{"Bebida", "Alimento"});
+        if (current != null && current.getCategory() == ProductCategory.FOOD) category.setSelectedIndex(1);
+        JPanel form = new JPanel(new GridLayout(0, 2, 6, 6));
+        form.add(new JLabel("Código:")); form.add(code);
+        form.add(new JLabel("Nombre:")); form.add(name);
+        form.add(new JLabel("Descripción:")); form.add(description);
+        form.add(new JLabel(combo == null ? "Precio en pesos:" : "Descuento (%):")); form.add(price);
+        if (combo == null) {
+            form.add(new JLabel("Categoría:")); form.add(category);
+        }
+        while (JOptionPane.showConfirmDialog(this, form, entry == null ? "Registrar producto" : "Modificar producto", JOptionPane.OK_CANCEL_OPTION) == JOptionPane.OK_OPTION) {
+            try {
+                Product product = combo == null
+                        ? ProductFactory.simple(name.getText(), description.getText(), price.getText(), category.getSelectedIndex() == 0 ? ProductCategory.BEVERAGE : ProductCategory.FOOD)
+                        : ProductFactory.editCombo(combo, name.getText(), description.getText(), price.getText());
+                if (entry == null) catalog.register(code.getText(), product);
+                else catalog.update(entry.code(), product);
+                refreshMenu();
+                return;
+            } catch (IllegalArgumentException e) {
+                JOptionPane.showMessageDialog(this, e.getMessage(), "Datos inválidos", JOptionPane.WARNING_MESSAGE);
+            }
+        }
+    }
+
+    private void refreshMenu() {
+        menu = List.copyOf(catalog.entries());
+        menuModel.setRowCount(0);
+        for (var entry : menu) {
+            Product p = entry.product();
+            menuModel.addRow(new Object[]{entry.code(), p.getName(), p.getCategory().getLabel(), Money.format(p.getPrice()), p.getDescription()});
+        }
+    }
+
     private JPanel promotionsPanel() {
         DefaultTableModel m = model("Código", "Descripción");
         for (Promotion p : promoList) m.addRow(new Object[]{p.getCode(), p.getDescription()});
@@ -161,7 +227,7 @@ public final class SwingApp extends JFrame implements OrderListener {
     private void addProduct() {
         int row = menuTable.getSelectedRow();
         if (row < 0) throw new IllegalArgumentException("Selecciona un producto del menú");
-        Product product = menu.get(row).product();
+        Product product = menu.get(menuTable.convertRowIndexToModel(row)).product();
         List<CustomizationOption> options = CustomizationCatalog.availableFor(product);
         if (!options.isEmpty()) {
             JPanel panel = new JPanel(new GridLayout(0, 1));
@@ -192,7 +258,7 @@ public final class SwingApp extends JFrame implements OrderListener {
 
     private void refreshCart() {
         cartModel.setRowCount(0);
-        for (OrderLine line : cart) cartModel.addRow(new Object[]{line.product().getName(), line.quantity(), Money.format(line.total())});
+        for (OrderLine line : cart) cartModel.addRow(new Object[]{line.product().getName(), line.product().getDescription(), line.quantity(), Money.format(line.total())});
         if (cart.isEmpty()) { total.setText("Total: $0"); hint.setText(" "); return; }
         Order draft = builder().preview();
         total.setText("Total: " + Money.format(draft.total()));
