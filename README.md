@@ -1,5 +1,5 @@
 
-Proyecto de Gestión de Cafetería
+# Proyecto de Gestión de Cafetería
 
 <p align="center">
   <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?w=1000&h=300&fit=crop" width="100%" alt="Cafetería">
