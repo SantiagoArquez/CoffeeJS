@@ -5,14 +5,6 @@ import com.cafeteria.util.Money;
 import java.math.BigDecimal;
 import java.util.Objects;
 
-/**
- * Producto básico del menú, sin personalización.
- *
- * <p><b>Patrón Decorator (rol ConcreteComponent):</b> es el objeto que los
- * decoradores envuelven para añadirle complementos. Es inmutable y valida sus datos
- * al construirse (RNF07): nombre obligatorio, precio no negativo y categoría
- * distinta de {@link ProductCategory#COMBO}.</p>
- */
 public final class SimpleProduct implements Product {
 
     private final String name;
@@ -20,13 +12,6 @@ public final class SimpleProduct implements Product {
     private final BigDecimal price;
     private final ProductCategory category;
 
-    /**
-     * @param name        nombre obligatorio (se recortan espacios)
-     * @param description descripción; si es {@code null} se usa cadena vacía
-     * @param price       precio obligatorio, no negativo (se redondea al peso)
-     * @param category    categoría obligatoria, no puede ser COMBO
-     * @throws IllegalArgumentException si algún dato es inválido
-     */
     public SimpleProduct(String name, String description, BigDecimal price, ProductCategory category) {
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("El nombre es obligatorio");

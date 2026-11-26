@@ -5,15 +5,6 @@ import com.cafeteria.util.Money;
 import java.math.BigDecimal;
 import java.util.List;
 
-/**
- * Combo: conjunto de dos o más productos que se vende como una sola unidad con un
- * descuento porcentual (RF06 y RF07).
- *
- * <p><b>Patrón Builder (rol Product):</b> es el objeto complejo que construye
- * {@link com.cafeteria.combo.ComboBuilder}. El precio nunca se guarda: se calcula en
- * cada consulta sumando los productos y aplicando el descuento, así que siempre
- * refleja los precios vigentes de sus componentes.</p>
- */
 public final class Combo implements Product {
 
     private final String name;
@@ -21,17 +12,6 @@ public final class Combo implements Product {
     private final List<Product> items;
     private final int discountPercent;
 
-    /**
-     * Crea un combo validado. Normalmente se obtiene mediante
-     * {@link com.cafeteria.combo.ComboPersonalizadoBuilder} o
-     * {@link com.cafeteria.catalog.ProductFactory#combo}.
-     *
-     * @param name            nombre obligatorio
-     * @param description     descripción opcional
-     * @param items           al menos dos productos
-     * @param discountPercent descuento entre 0 y 100
-     * @throws IllegalArgumentException si no se cumplen las reglas anteriores
-     */
     public Combo(String name, String description, List<Product> items, int discountPercent) {
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("El nombre del combo es obligatorio");
@@ -48,17 +28,14 @@ public final class Combo implements Product {
         this.discountPercent = discountPercent;
     }
 
-    /** @return la descripción escrita por el administrador, sin la lista de productos */
     public String getBaseDescription() {
         return description;
     }
 
-    /** @return los productos que componen el combo (lista inmutable) */
     public List<Product> getItems() {
         return items;
     }
 
-    /** @return el descuento porcentual aplicado a la suma de los productos */
     public int getDiscountPercent() {
         return discountPercent;
     }
